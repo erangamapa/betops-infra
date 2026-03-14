@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vip-concierge
+data:
+  PORT: "8080"
+  LOYALTY_API_URL: https://loyalty.sportsbook.internal
+  TRADING_API_URL: https://trading.sportsbook.internal
+  PLACEMENT_QUEUE_URL: https://placements.sportsbook.internal
