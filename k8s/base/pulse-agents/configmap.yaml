@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pulse-agents
+data:
+  NODE_ENV: production
+  PORT: "8080"
+  LOG_LEVEL: info
+  GCP_PROJECT_ID: oddsmith-platform
+  BETTING_ENGINE_URL: https://api.oddsmith.dev/engine
+  TIMELINE_URL: https://api.oddsmith.dev/timeline
+  STATS_URL: https://api.oddsmith.dev/stats
+  ODDS_STREAM_URL: https://api.oddsmith.dev/odds/stream
+  SCORING_URL: http://scoring.platform.svc.cluster.local:8000
+  VLLM_BASE_URL: http://vllm.platform.svc.cluster.local:8000/v1
+  MAX_THREAD_REPLIES: "2"
+  THREAD_COOLDOWN_MS: "60000"
+  AGENT_HOP_BUDGET: "3"
+  PLACEMENT_RATE_PER_SECOND: "50"
+  COMMISSION_BPS: "200"
+  BREAKER_FAILURE_THRESHOLD: "5"
+  BREAKER_RESET_MS: "15000"

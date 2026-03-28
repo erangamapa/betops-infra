@@ -1,0 +1,32 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: pulse-agents
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: pulse-agents
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 65
+    # Needs the custom metrics stackdriver adapter in the cluster.
+    # - type: External
+    #   external:
+    #     metric:
+    #       name: pubsub.googleapis.com|subscription|num_undelivered_messages
+    #       selector:
+    #         matchLabels:
+    #           resource.labels.subscription_id: sports-news.pulse-agents
+    #     target:
+    #       type: AverageValue
+    #       averageValue: "100"
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
