@@ -54,7 +54,7 @@ Bet placement goes through the Cloud Tasks queue `placement-dispatch`. It caps d
 
 ## Validate locally
 
-No cloud credentials are needed.
+No cloud credentials are needed. You need `terraform`, `kustomize` and `kubeconform` installed. CI runs the same steps with Terraform 1.9.8 and `kubectl kustomize`.
 
 ```
 cd terraform
