@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: vllm
+  labels:
+    app.kubernetes.io/name: vllm
+    app.kubernetes.io/part-of: platform
+spec:
+  serviceName: vllm
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vllm
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: vllm
+        app.kubernetes.io/part-of: platform
+    spec:
+      serviceAccountName: vllm
+      terminationGracePeriodSeconds: 90
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-l4
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: vllm
+          image: vllm/vllm-openai:v0.6.3
+          args:
+            - --model=Qwen/Qwen2.5-1.5B-Instruct
+            - --served-model-name=qwen25-15b
+            - --dtype=bfloat16
+            - --gpu-memory-utilization=0.85
+            - --max-model-len=2048
+            - --port=8000
+            - --enable-lora
+            - --max-loras=4
+            - --max-lora-rank=32
+            - --lora-modules=tweet-classifier=/models/adapters/tweet-classifier-qwen25-15b/adapter
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: HF_HOME
+              value: /models/cache
+          resources:
+            requests:
+              cpu: "2"
+              memory: 12Gi
+              nvidia.com/gpu: "1"
+            limits:
+              memory: 16Gi
+              nvidia.com/gpu: "1"
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "15"]
+          volumeMounts:
+            - name: model-cache
+              mountPath: /models
+            - name: shm
+              mountPath: /dev/shm
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 2Gi
+  volumeClaimTemplates:
+    - metadata:
+        name: model-cache
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: premium-rwo
+        resources:
+          requests:
+            storage: 50Gi
