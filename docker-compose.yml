@@ -1,0 +1,75 @@
+name: betops
+
+services:
+  pubsub:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085 --project=oddsmith-local
+    ports:
+      - "8085:8085"
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: betops
+      POSTGRES_PASSWORD: local-only
+      POSTGRES_DB: betops
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U betops"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  scoring:
+    image: python:3.11-slim
+    working_dir: /workspace/pulse-agents/python/scoring
+    volumes:
+      - ../sportsbook-contracts:/workspace/sportsbook-contracts:ro
+      - ../pulse-agents:/workspace/pulse-agents
+    environment:
+      SCORING_MODEL_PATH: /workspace/pulse-agents/python/scoring/artifacts/win_model.joblib
+    command: >
+      sh -c "pip install -q -e /workspace/sportsbook-contracts/packages/py -e . &&
+      python -m scoring.train_fixture &&
+      uvicorn scoring.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/healthz')"]
+      interval: 10s
+      retries: 30
+
+  pulse-agents:
+    build:
+      context: ..
+      dockerfile: pulse-agents/Dockerfile
+    env_file:
+      - ../pulse-agents/.env.example
+    environment:
+      PUBSUB_EMULATOR_HOST: pubsub:8085
+      GCP_PROJECT_ID: oddsmith-local
+      SCORING_URL: http://scoring:8000
+    depends_on:
+      - pubsub
+      - scoring
+    ports:
+      - "8080:8080"
+
+  pulse-vip-concierge:
+    build:
+      context: ..
+      dockerfile: pulse-vip-concierge/Dockerfile
+    env_file:
+      - ../pulse-vip-concierge/.env.example
+    environment:
+      PORT: "8081"
+    depends_on:
+      - redis
+      - postgres
+    ports:
+      - "8081:8081"
